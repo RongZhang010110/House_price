@@ -47,7 +47,9 @@ all_concentration <- concentration_percentage(all)
 all_concentration_df <- as.data.frame(all_concentration, stringsAsFactors = FALSE)
 all_concentration_df <- all_concentration_df[order(-all_concentration_df$all_concentration), , drop = FALSE]
 print(all_concentration_df)
-
+#remove columns with concentration > 90%
+columns_to_remove <- names(all_concentration[all_concentration > 90])
+all <- all[, !(names(all) %in% columns_to_remove)]
 
 
 ### Numeric predictors
@@ -74,16 +76,18 @@ corrplot.mixed(cor_numVar, tl.col="black", tl.pos = "lt")
 ###
 NAcol <- which(colSums(is.na(all)) > 0)
 sort(colSums(sapply(all[NAcol], is.na)), decreasing = TRUE)
-#Markdown:The 1459 NAs in SalePrice match the size of the test set perfectly. Because we set them to be.
+#Markdown:The 1459 NAs in SalePrice match the size of the test set perfectly. Because we set them 
 
 missing_counts <- colSums(sapply(all[NAcol], is.na))
 total_rows <- nrow(all)
 missing_percentage <- (missing_counts / total_rows) * 100
 sort(missing_percentage, decreasing = TRUE)
-# more than 93% of the observations in variables “PoolQC” “MiscFeature” and “Alley” were NA
+#more than 93% of the observations in variables “PoolQC” “MiscFeature” and “Alley” were NA
+#delect the three variables
+all <- all[, !(names(all) %in% c("PoolQC", "MiscFeature", "Alley"))]
 
 
-###Filling NAs
+###Filling the NAs
 
 #Fence
 all$Fence[is.na(all$Fence)] <- 'None'
@@ -95,7 +99,13 @@ Qualities <- c('None' = 0, 'Po' = 1, 'Fa' = 2, 'TA' = 3, 'Gd' = 4, 'Ex' = 5)
 all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
 all$FireplaceQu<-as.integer(revalue(all$FireplaceQu, Qualities))
 table(all$Fireplaces)
-#LotFrontage:Reg is the best
+#LotFrontage
+for (i in 1:nrow(all)){
+  if(is.na(all$LotFrontage[i])){
+    all$LotFrontage[i] <- as.integer(median(all$LotFrontage[all$Neighborhood==all$Neighborhood[i]], na.rm=TRUE)) 
+  }
+}
+#LotShape:Reg is the best
 all$LotShape<-as.integer(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
 table(all$LotShape)
 # 7 kinds of Garage variables
@@ -125,8 +135,8 @@ all$GarageFinish<-as.integer(revalue(all$GarageFinish, Finish))
 all$GarageQual[is.na(all$GarageQual)] <- 'None'
 all$GarageQual<-as.integer(revalue(all$GarageQual, Qualities))
 #GarageCond
-all$GarageCond[is.na(all$GarageCond)] <- 'None'
-all$GarageCond<-as.integer(revalue(all$GarageCond, Qualities))
+# all$GarageCond[is.na(all$GarageCond)] <- 'None'
+# all$GarageCond<-as.integer(revalue(all$GarageCond, Qualities))
 #11 variables relate to basement
 #
 length(which(is.na(all$BsmtQual) & is.na(all$BsmtCond) & is.na(all$BsmtExposure) & is.na(all$BsmtFinType1) & is.na(all$BsmtFinType2)))
@@ -155,7 +165,7 @@ FinType <- c('None'=0, 'Unf'=1, 'LwQ'=2, 'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
 all$BsmtFinType2<-as.integer(revalue(all$BsmtFinType2, FinType))
 #其余全部填充0
 all$BsmtFullBath[is.na(all$BsmtFullBath)] <-0
-all$BsmtHalfBath[is.na(all$BsmtHalfBath)] <-0
+# all$BsmtHalfBath[is.na(all$BsmtHalfBath)] <-0
 all$BsmtFinSF1[is.na(all$BsmtFinSF1)] <-0
 all$BsmtFinSF2[is.na(all$BsmtFinSF2)] <-0
 all$BsmtUnfSF[is.na(all$BsmtUnfSF)] <-0
@@ -173,21 +183,21 @@ all$MasVnrArea[is.na(all$MasVnrArea)] <-0
 all$MSZoning[is.na(all$MSZoning)] <- names(sort(-table(all$MSZoning)))[1]#获取众数
 all$MSZoning <- as.factor(all$MSZoning)
 #KitchenQual
-all$KitchenQual[is.na(all$KitchenQual)] <- 'TA' #replace with most common value
-all$KitchenQual<-as.integer(revalue(all$KitchenQual, Qualities))
-#Utilities：concentration太大了，删掉这个变量
-table(all$Utilities)
+# all$KitchenQual[is.na(all$KitchenQual)] <- 'TA' #replace with most common value
+# all$KitchenQual<-as.integer(revalue(all$KitchenQual, Qualities))
 #Functional
-all$Functional[is.na(all$Functional)] <- names(sort(-table(all$Functional)))[1]
-all$Functional <- as.integer(revalue(all$Functional, c('Sal'=0, 'Sev'=1, 'Maj2'=2, 'Maj1'=3, 'Mod'=4, 'Min2'=5, 'Min1'=6, 'Typ'=7)))
+# all$Functional[is.na(all$Functional)] <- names(sort(-table(all$Functional)))[1]
+# all$Functional <- as.integer(revalue(all$Functional, c('Sal'=0, 'Sev'=1, 'Maj2'=2, 'Maj1'=3, 'Mod'=4, 'Min2'=5, 'Min1'=6, 'Typ'=7)))
 #Exterior1st
 all$Exterior1st[is.na(all$Exterior1st)] <- names(sort(-table(all$Exterior1st)))[1]
 all$Exterior1st <- as.factor(all$Exterior1st)
 #Electrical
-all$Electrical[is.na(all$Electrical)] <- names(sort(-table(all$Electrical)))[1]
-all$Electrical <- as.factor(all$Electrical)
+# all$Electrical[is.na(all$Electrical)] <- names(sort(-table(all$Electrical)))[1]
+# all$Electrical <- as.factor(all$Electrical)
 #SaleType
 all$SaleType[is.na(all$SaleType)] <- names(sort(-table(all$SaleType)))[1]
 all$SaleType <- as.factor(all$SaleType)
 
+# export the clean dataset
+# write.csv(all, "clean_dataset.csv", row.names = FALSE)
 
